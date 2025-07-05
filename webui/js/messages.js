@@ -6,7 +6,7 @@ import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.8.0/+esm';
 import { store as messageResizeStore } from "/components/messages/resize/message-resize-store.js";
 import { getAutoScroll } from "/index.js";
 
-mermaid.initialize({ startOnLoad: true });
+mermaid.initialize({ startOnLoad: true, theme: "dark" });
 marked.use({
   renderer: function () {
     // Custom renderer for mermaid.js
