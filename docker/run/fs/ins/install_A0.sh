@@ -10,8 +10,13 @@ if [ -z "$1" ]; then
     exit 1
 fi
 BRANCH="$1"
+ORIGIN="$2"
 
-git clone -b "$BRANCH" "https://github.com/frdel/agent-zero" "/git/agent-zero" || {
+if [ -z "$ORIGIN" ]; then
+    ORIGIN="https://github.com/frdel/agent-zero"
+fi
+
+git clone -b "$BRANCH" "$ORIGIN" "/git/agent-zero" || {
     echo "CRITICAL ERROR: Failed to clone repository. Branch: $BRANCH"
     exit 1
 }
