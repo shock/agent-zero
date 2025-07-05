@@ -1,8 +1,8 @@
 // copy button
 import { openImageModal } from "./image_modal.js";
 import { marked } from "../vendor/marked/marked.esm.js";
-// import mermaid from "../vendor/mermaid/mermaid.esm.js";
-import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.8.0/+esm';
+import mermaid from "../vendor/mermaid/mermaid@11.8.0.esm.min.js";
+// import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.8.0/+esm';
 import { store as messageResizeStore } from "/components/messages/resize/message-resize-store.js";
 import { getAutoScroll } from "/index.js";
 
