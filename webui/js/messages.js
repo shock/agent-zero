@@ -1,8 +1,28 @@
 // copy button
 import { openImageModal } from "./image_modal.js";
 import { marked } from "../vendor/marked/marked.esm.js";
+// import mermaid from "../vendor/mermaid/mermaid.esm.js";
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.8.0/+esm';
 import { store as messageResizeStore } from "/components/messages/resize/message-resize-store.js";
 import { getAutoScroll } from "/index.js";
+
+mermaid.initialize({ startOnLoad: true });
+marked.use({
+  renderer: function () {
+    // Custom renderer for mermaid.js
+    const renderer = new marked.Renderer();
+    const default_code_renderer = renderer.code;
+    renderer.code = function (code) {
+      // Detect Mermaid diagrams by language or content
+      if (code.lang === 'mermaid' || code.text.match(/^sequenceDiagram|^graph/)) {
+        return `<pre class="mermaid">${code.text}</pre>`;
+      } else {
+        return default_code_renderer.call(this, code);
+      }
+    };
+    return renderer;
+  }()
+});
 
 const chatHistory = document.getElementById("chat-history");
 
@@ -66,6 +86,7 @@ export function setMessage(id, type, heading, content, temp, kvps = null) {
 
     messageGroup.appendChild(messageContainer);
     chatHistory.appendChild(messageGroup);
+    mermaid.run();
   }
 }
 
