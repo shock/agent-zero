@@ -5,6 +5,8 @@ import mermaid from "../vendor/mermaid/mermaid@11.8.0.esm.min.js";
 // import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.8.0/+esm';
 import { store as messageResizeStore } from "/components/messages/resize/message-resize-store.js";
 import { getAutoScroll } from "/index.js";
+import { store as _messageResizeStore } from "/components/messages/resize/message-resize-store.js"; // keep here, required in html
+import { store as attachmentsStore } from "/components/chat/attachments/attachmentsStore.js";
 
 mermaid.initialize({ startOnLoad: true, theme: "dark" });
 marked.use({
@@ -34,9 +36,9 @@ export function setMessage(id, type, heading, content, temp, kvps = null) {
 
   if (messageContainer) {
     // Don't re-render user messages
-    if (type === "user") {
-      return; // Skip re-rendering
-    }
+    // if (type === "user") {
+    //   return; // Skip re-rendering
+    // }
     // For other types, update the message
     messageContainer.innerHTML = "";
   } else {
@@ -217,6 +219,7 @@ export function _drawMessage(
       processedContent = convertImgFilePaths(processedContent);
       processedContent = marked.parse(processedContent, { breaks: true });
       processedContent = convertPathsToLinks(processedContent);
+      processedContent = addBlankTargetsToLinks(processedContent);
       spanElement.innerHTML = processedContent;
 
       // KaTeX rendering for markdown
@@ -265,6 +268,24 @@ export function _drawMessage(
     }, 0);
 
   return messageDiv;
+}
+
+export function addBlankTargetsToLinks(str) {
+  const doc = new DOMParser().parseFromString(str, 'text/html');
+
+  doc.querySelectorAll('a').forEach(anchor => {
+    const href = anchor.getAttribute('href') || '';
+    if (href.startsWith('#') || href.trim().toLowerCase().startsWith('javascript')) return;
+    if (!anchor.hasAttribute('target') || anchor.getAttribute('target') === '') {
+      anchor.setAttribute('target', '_blank');
+    }
+
+    const rel = (anchor.getAttribute('rel') || '').split(/\s+/).filter(Boolean);
+    if (!rel.includes('noopener')) rel.push('noopener');
+    if (!rel.includes('noreferrer')) rel.push('noreferrer');
+    anchor.setAttribute('rel', rel.join(' '));
+  });
+  return doc.body.innerHTML;
 }
 
 export function drawMessageDefault(
@@ -385,7 +406,7 @@ export function drawMessageUser(
   const headingElement = document.createElement("h4");
   headingElement.classList.add("msg-heading");
   headingElement.innerHTML =
-    "User message <span class='icon material-symbols-outlined'>person</span>";
+    `${heading} <span class='icon material-symbols-outlined'>person</span>`;
   messageDiv.appendChild(headingElement);
 
   if (content && content.trim().length > 0) {
@@ -415,48 +436,41 @@ export function drawMessageUser(
       const attachmentDiv = document.createElement("div");
       attachmentDiv.classList.add("attachment-item");
 
-      if (typeof attachment === "string") {
-        // attachment is filename
-        const filename = attachment;
-        const extension = filename.split(".").pop().toUpperCase();
+      const displayInfo = attachmentsStore.getAttachmentDisplayInfo(attachment);
 
-        attachmentDiv.classList.add("file-type");
-        attachmentDiv.innerHTML = `
-                    <div class="file-preview">
-                        <span class="filename">${filename}</span>
-                        <span class="extension">${extension}</span>
-                    </div>
-                `;
-      } else if (attachment.type === "image") {
-        // Existing logic for images
-        const imgWrapper = document.createElement("div");
-        imgWrapper.classList.add("image-wrapper");
+      if (displayInfo.isImage) {
+        attachmentDiv.classList.add("image-type");
 
         const img = document.createElement("img");
-        img.src = attachment.url;
-        img.alt = attachment.name;
+        img.src = displayInfo.previewUrl;
+        img.alt = displayInfo.filename;
         img.classList.add("attachment-preview");
+        img.style.cursor = "pointer";
 
-        const fileInfo = document.createElement("div");
-        fileInfo.classList.add("file-info");
-        fileInfo.innerHTML = `
-                    <span class="filename">${attachment.name}</span>
-                    <span class="extension">${attachment.extension.toUpperCase()}</span>
-                `;
 
-        imgWrapper.appendChild(img);
-        attachmentDiv.appendChild(imgWrapper);
-        attachmentDiv.appendChild(fileInfo);
+        attachmentDiv.appendChild(img);
       } else {
-        // Existing logic for non-image files
+        // Render as file tile with title and icon
         attachmentDiv.classList.add("file-type");
-        attachmentDiv.innerHTML = `
-                    <div class="file-preview">
-                        <span class="filename">${attachment.name}</span>
-                        <span class="extension">${attachment.extension.toUpperCase()}</span>
-                    </div>
-                `;
+        
+        // File icon
+        if (displayInfo.previewUrl && displayInfo.previewUrl !== displayInfo.filename) {
+          const iconImg = document.createElement("img");
+          iconImg.src = displayInfo.previewUrl;
+          iconImg.alt = `${displayInfo.extension} file`;
+          iconImg.classList.add("file-icon");
+          attachmentDiv.appendChild(iconImg);
+        }
+        
+        // File title
+        const fileTitle = document.createElement("div");
+        fileTitle.classList.add("file-title");
+        fileTitle.textContent = displayInfo.filename;
+                
+        attachmentDiv.appendChild(fileTitle);
       }
+
+      attachmentDiv.addEventListener('click', displayInfo.clickHandler);
 
       attachmentsContainer.appendChild(attachmentDiv);
     });
@@ -704,8 +718,6 @@ function drawKvps(container, kvps, latex) {
           });
         } else {
           const pre = document.createElement("pre");
-          // pre.classList.add("kvps-val");
-          //   if (row.classList.contains("msg-thoughts")) {
           const span = document.createElement("span");
           span.innerHTML = convertHTML(value);
           pre.appendChild(span);
@@ -727,17 +739,7 @@ function drawKvps(container, kvps, latex) {
           }
         }
       }
-      //   } else {
-      //     pre.textContent = value;
 
-      //     // Add click handler
-      //     pre.addEventListener("click", () => {
-      //       copyText(value, pre);
-      //     });
-
-      //     td.appendChild(pre);
-      //     addCopyButtonToElement(row);
-      //   }
     }
     container.appendChild(table);
   }
@@ -848,46 +850,13 @@ function convertPathsToLinks(str) {
 
 function adjustMarkdownRender(element) {
   // find all tables in the element
-  const tables = element.querySelectorAll("table");
+  const elements = element.querySelectorAll("table");
 
-  // wrap each table with a div with class message-markdown-table-wrap
-  tables.forEach((table) => {
-    // create wrapper div
+  // wrap each with a div with class message-markdown-table-wrap
+  elements.forEach((el) => {
     const wrapper = document.createElement("div");
     wrapper.className = "message-markdown-table-wrap";
-
-    // insert wrapper before table in the DOM
-    table.parentNode.insertBefore(wrapper, table);
-
-    // move table into wrapper
-    wrapper.appendChild(table);
+    el.parentNode.insertBefore(wrapper, el);
+    wrapper.appendChild(el);
   });
 }
-
-// function convertPathsToLinksInHtml(htmlString) {
-//   // 1. Parse the input safely
-//   const wrapper = document.createElement("div");
-//   wrapper.innerHTML = htmlString;
-
-//   // 2. Depth-first walk
-//   function walk(node) {
-//     // Skip <script> and <style> blocks entirely
-//     if (node.nodeName === "SCRIPT" || node.nodeName === "STYLE") return;
-
-//     if (node.nodeType === Node.TEXT_NODE) {
-//       const original = node.nodeValue;
-//       const replaced = convertPathsToLinks(original);
-//       if (replaced !== original) {
-//         // Turn the replacement HTML string into real nodes
-//         const frag = document.createRange().createContextualFragment(replaced);
-//         node.replaceWith(frag);
-//       }
-//     } else {
-//       // Recurse into children
-//       for (const child of Array.from(node.childNodes)) walk(child);
-//     }
-//   }
-
-//   walk(wrapper);
-//   return wrapper.innerHTML;
-// }

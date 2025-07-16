@@ -1,5 +1,5 @@
 import models
-from agent import AgentConfig, ModelConfig
+from agent import AgentConfig
 from python.helpers import runtime, settings, defer
 from python.helpers.print_style import PrintStyle
 
@@ -26,9 +26,11 @@ def initialize_agent():
         return result
 
     # chat model from user settings
-    chat_llm = ModelConfig(
+    chat_llm = models.ModelConfig(
+        type=models.ModelType.CHAT,
         provider=models.ModelProvider[current_settings["chat_model_provider"]],
         name=current_settings["chat_model_name"],
+        api_base=current_settings["chat_model_api_base"],
         ctx_length=current_settings["chat_model_ctx_length"],
         vision=current_settings["chat_model_vision"],
         limit_requests=current_settings["chat_model_rl_requests"],
@@ -38,9 +40,11 @@ def initialize_agent():
     )
 
     # utility model from user settings
-    utility_llm = ModelConfig(
+    utility_llm = models.ModelConfig(
+        type=models.ModelType.CHAT,
         provider=models.ModelProvider[current_settings["util_model_provider"]],
         name=current_settings["util_model_name"],
+        api_base=current_settings["util_model_api_base"],
         ctx_length=current_settings["util_model_ctx_length"],
         limit_requests=current_settings["util_model_rl_requests"],
         limit_input=current_settings["util_model_rl_input"],
@@ -48,16 +52,20 @@ def initialize_agent():
         kwargs=_normalize_model_kwargs(current_settings["util_model_kwargs"]),
     )
     # embedding model from user settings
-    embedding_llm = ModelConfig(
+    embedding_llm = models.ModelConfig(
+        type=models.ModelType.EMBEDDING,
         provider=models.ModelProvider[current_settings["embed_model_provider"]],
         name=current_settings["embed_model_name"],
+        api_base=current_settings["embed_model_api_base"],
         limit_requests=current_settings["embed_model_rl_requests"],
         kwargs=_normalize_model_kwargs(current_settings["embed_model_kwargs"]),
     )
     # browser model from user settings
-    browser_llm = ModelConfig(
+    browser_llm = models.ModelConfig(
+        type=models.ModelType.CHAT,
         provider=models.ModelProvider[current_settings["browser_model_provider"]],
         name=current_settings["browser_model_name"],
+        api_base=current_settings["browser_model_api_base"],
         vision=current_settings["browser_model_vision"],
         kwargs=_normalize_model_kwargs(current_settings["browser_model_kwargs"]),
     )

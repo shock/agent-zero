@@ -1,3 +1,4 @@
+
 // Tunnel settings for the Settings modal
 document.addEventListener('alpine:init', () => {
     Alpine.data('tunnelSettings', () => ({
@@ -163,7 +164,7 @@ document.addEventListener('alpine:init', () => {
             // Get provider from the parent settings modal scope
             const modalEl = document.getElementById('settingsModal');
             const modalAD = Alpine.$data(modalEl);
-            const provider = modalAD.provider || 'serveo'; // Default to serveo if not set
+            const provider = modalAD.provider || 'cloudflared'; // Default to cloudflared if not set
             
             // Change create button appearance
             const createButton = document.querySelector('.tunnel-actions .btn-ok');

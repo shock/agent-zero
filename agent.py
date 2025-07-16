@@ -202,24 +202,13 @@ class AgentContext:
             agent.handle_critical_exception(e)
 
 
-@dataclass
-class ModelConfig:
-    provider: models.ModelProvider
-    name: str
-    ctx_length: int = 0
-    limit_requests: int = 0
-    limit_input: int = 0
-    limit_output: int = 0
-    vision: bool = False
-    kwargs: dict = field(default_factory=dict)
-
 
 @dataclass
 class AgentConfig:
-    chat_model: ModelConfig
-    utility_model: ModelConfig
-    embeddings_model: ModelConfig
-    browser_model: ModelConfig
+    chat_model: models.ModelConfig
+    utility_model: models.ModelConfig
+    embeddings_model: models.ModelConfig
+    browser_model: models.ModelConfig
     mcp_servers: str
     prompts_subdir: str = ""
     memory_subdir: str = ""
@@ -581,21 +570,28 @@ class Agent:
         return models.get_chat_model(
             self.config.chat_model.provider,
             self.config.chat_model.name,
-            **self.config.chat_model.kwargs,
+            **self.config.chat_model.build_kwargs(),
         )
 
     def get_utility_model(self):
         return models.get_chat_model(
             self.config.utility_model.provider,
             self.config.utility_model.name,
-            **self.config.utility_model.kwargs,
+            **self.config.utility_model.build_kwargs(),
+        )
+
+    def get_browser_model(self):
+        return models.get_browser_model(
+            self.config.browser_model.provider,
+            self.config.browser_model.name,
+            **self.config.browser_model.build_kwargs(),
         )
 
     def get_embedding_model(self):
         return models.get_embedding_model(
             self.config.embeddings_model.provider,
             self.config.embeddings_model.name,
-            **self.config.embeddings_model.kwargs,
+            **self.config.embeddings_model.build_kwargs(),
         )
 
     async def call_utility_model(
@@ -663,7 +659,7 @@ class Agent:
         return response, reasoning
 
     async def rate_limiter(
-        self, model_config: ModelConfig, input: str, background: bool = False
+        self, model_config: models.ModelConfig, input: str, background: bool = False
     ):
         # rate limiter log
         wait_log = None
@@ -750,7 +746,7 @@ class Agent:
             # Fallback to local get_tool if MCP tool was not found or MCP lookup failed
             if not tool:
                 tool = self.get_tool(
-                    name=tool_name, method=tool_method, args=tool_args, message=msg
+                    name=tool_name, method=tool_method, args=tool_args, message=msg, loop_data=self.loop_data
                 )
 
             if tool:
@@ -805,7 +801,7 @@ class Agent:
             pass
 
     def get_tool(
-        self, name: str, method: str | None, args: dict, message: str, **kwargs
+        self, name: str, method: str | None, args: dict, message: str, loop_data: LoopData | None, **kwargs
     ):
         from python.tools.unknown import Unknown
         from python.helpers.tool import Tool
@@ -815,7 +811,7 @@ class Agent:
         )
         tool_class = classes[0] if classes else Unknown
         return tool_class(
-            agent=self, name=name, method=method, args=args, message=message, **kwargs
+            agent=self, name=name, method=method, args=args, message=message, loop_data=loop_data, **kwargs
         )
 
     async def call_extensions(self, folder: str, **kwargs) -> Any:
