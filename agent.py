@@ -215,7 +215,7 @@ class AgentConfig:
     knowledge_subdirs: list[str] = field(default_factory=lambda: ["default", "custom"])
     code_exec_docker_enabled: bool = False
     code_exec_docker_name: str = "A0-dev"
-    code_exec_docker_image: str = "frdel/agent-zero-run:development"
+    code_exec_docker_image: str = "agent0ai/agent-zero-run:development"
     code_exec_docker_ports: dict[str, int] = field(
         default_factory=lambda: {"22/tcp": 55022, "80/tcp": 55080}
     )
@@ -295,6 +295,12 @@ class Agent:
         self.last_user_message: history.Message | None = None
         self.intervention: UserMessage | None = None
         self.data = {}  # free data object all the tools can use
+
+
+        asyncio.run(self.call_extensions("agent_init"))
+
+
+
 
     async def monologue(self):
         while True:
@@ -671,7 +677,7 @@ class Agent:
                     type="util",
                     update_progress="none",
                     heading=msg,
-                    model=f"{model_config.provider.value}\\{model_config.name}",
+                    model=f"{model_config.provider}\\{model_config.name}",
                 )
             wait_log.update(heading=msg, key=key, value=total, limit=limit)
             if not background:

@@ -505,11 +505,11 @@ class MCPConfig(BaseModel):
     def __init__(self, servers_list: List[Dict[str, Any]]):
         from collections.abc import Mapping, Iterable
 
-        # DEBUG: Print the received servers_list
-        if servers_list:
-            PrintStyle(background_color="blue", font_color="white", padding=True).print(
-                f"MCPConfig.__init__ received servers_list: {servers_list}"
-            )
+        # # DEBUG: Print the received servers_list
+        # if servers_list:
+        #     PrintStyle(background_color="blue", font_color="white", padding=True).print(
+        #         f"MCPConfig.__init__ received servers_list: {servers_list}"
+        #     )
 
         # This empties the servers list if MCPConfig is a Pydantic model and servers is a field.
         # If servers is a field like `servers: List[MCPServer] = Field(default_factory=list)`,
@@ -758,7 +758,7 @@ class MCPConfig(BaseModel):
     def get_tool(self, agent: Any, tool_name: str) -> MCPTool | None:
         if not self.has_tool(tool_name):
             return None
-        return MCPTool(agent=agent, name=tool_name, method=None, args={}, message="")
+        return MCPTool(agent=agent, name=tool_name, method=None, args={}, message="", loop_data=None)
 
     async def call_tool(
         self, tool_name: str, input_data: Dict[str, Any]

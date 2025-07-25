@@ -1,5 +1,5 @@
-import models
 from agent import AgentConfig
+import models
 from python.helpers import runtime, settings, defer
 from python.helpers.print_style import PrintStyle
 
@@ -28,7 +28,7 @@ def initialize_agent():
     # chat model from user settings
     chat_llm = models.ModelConfig(
         type=models.ModelType.CHAT,
-        provider=models.ModelProvider[current_settings["chat_model_provider"]],
+        provider=current_settings["chat_model_provider"],
         name=current_settings["chat_model_name"],
         api_base=current_settings["chat_model_api_base"],
         ctx_length=current_settings["chat_model_ctx_length"],
@@ -42,7 +42,7 @@ def initialize_agent():
     # utility model from user settings
     utility_llm = models.ModelConfig(
         type=models.ModelType.CHAT,
-        provider=models.ModelProvider[current_settings["util_model_provider"]],
+        provider=current_settings["util_model_provider"],
         name=current_settings["util_model_name"],
         api_base=current_settings["util_model_api_base"],
         ctx_length=current_settings["util_model_ctx_length"],
@@ -54,7 +54,7 @@ def initialize_agent():
     # embedding model from user settings
     embedding_llm = models.ModelConfig(
         type=models.ModelType.EMBEDDING,
-        provider=models.ModelProvider[current_settings["embed_model_provider"]],
+        provider=current_settings["embed_model_provider"],
         name=current_settings["embed_model_name"],
         api_base=current_settings["embed_model_api_base"],
         limit_requests=current_settings["embed_model_rl_requests"],
@@ -63,7 +63,7 @@ def initialize_agent():
     # browser model from user settings
     browser_llm = models.ModelConfig(
         type=models.ModelType.CHAT,
-        provider=models.ModelProvider[current_settings["browser_model_provider"]],
+        provider=current_settings["browser_model_provider"],
         name=current_settings["browser_model_name"],
         api_base=current_settings["browser_model_api_base"],
         vision=current_settings["browser_model_vision"],
@@ -77,11 +77,11 @@ def initialize_agent():
         browser_model=browser_llm,
         prompts_subdir=current_settings["agent_prompts_subdir"],
         memory_subdir=current_settings["agent_memory_subdir"],
-        knowledge_subdirs=["default", current_settings["agent_knowledge_subdir"]],
+        knowledge_subdirs=[current_settings["agent_knowledge_subdir"], "default"],
         mcp_servers=current_settings["mcp_servers"],
         code_exec_docker_enabled=False,
         # code_exec_docker_name = "A0-dev",
-        # code_exec_docker_image = "frdel/agent-zero-run:development",
+        # code_exec_docker_image = "agent0ai/agent-zero:development",
         # code_exec_docker_ports = { "22/tcp": 55022, "80/tcp": 55080 }
         # code_exec_docker_volumes = {
         # files.get_base_dir(): {"bind": "/a0", "mode": "rw"},
@@ -144,6 +144,10 @@ def initialize_mcp():
 def initialize_job_loop():
     from python.helpers.job_loop import run_loop
     return defer.DeferredTask("JobLoop").start_task(run_loop)
+
+def initialize_preload():
+    import preload
+    return defer.DeferredTask().start_task(preload.preload)
 
 
 def _args_override(config):
