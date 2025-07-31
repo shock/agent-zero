@@ -269,7 +269,7 @@ class MemoryConsolidator:
 
     async def _gather_consolidated_metadata(
         self,
-        db,
+        db: Memory,
         result: ConsolidationResult,
         original_metadata: Dict[str, Any]
     ) -> Dict[str, Any]:
@@ -297,7 +297,7 @@ class MemoryConsolidator:
 
             # Retrieve original memories to extract their metadata
             if memory_ids:
-                original_memories = await db.aget_by_ids(memory_ids)
+                original_memories = await db.db.aget_by_ids(memory_ids)
 
                 # Merge ALL metadata fields from original memories
                 for memory in original_memories:
@@ -571,7 +571,7 @@ class MemoryConsolidator:
 
     async def _handle_keep_separate(
         self,
-        db,
+        db: Memory,
         result: ConsolidationResult,
         area: str,
         original_metadata: Dict[str, Any],  # Add original metadata parameter
@@ -592,15 +592,16 @@ class MemoryConsolidator:
             **result.metadata     # LLM metadata second (wins conflicts)
         }
 
-        if result.reasoning:
-            final_metadata['consolidation_reasoning'] = result.reasoning
+        # do not include reasoning in memory
+        # if result.reasoning:
+        #     final_metadata['consolidation_reasoning'] = result.reasoning
 
         new_id = await db.insert_text(result.new_memory_content, final_metadata)
         return [new_id]
 
     async def _handle_merge(
         self,
-        db,
+        db: Memory,
         result: ConsolidationResult,
         area: str,
         original_metadata: Dict[str, Any],  # Add original metadata parameter
@@ -624,8 +625,9 @@ class MemoryConsolidator:
                 **result.metadata     # LLM metadata second (wins conflicts)
             }
 
-            if result.reasoning:
-                final_metadata['consolidation_reasoning'] = result.reasoning
+            # do not include reasoning in memory
+            # if result.reasoning:
+            #     final_metadata['consolidation_reasoning'] = result.reasoning
 
             new_id = await db.insert_text(result.new_memory_content, final_metadata)
             return [new_id]
@@ -634,7 +636,7 @@ class MemoryConsolidator:
 
     async def _handle_replace(
         self,
-        db,
+        db: Memory,
         result: ConsolidationResult,
         area: str,
         original_metadata: Dict[str, Any],  # Add original metadata parameter
@@ -645,7 +647,7 @@ class MemoryConsolidator:
         # Step 1: Validate similarity scores for replacement safety
         if result.memories_to_remove:
             # Get the memories to be removed and check their similarity scores
-            memories_to_check = await db.aget_by_ids(result.memories_to_remove)
+            memories_to_check = await db.db.aget_by_ids(result.memories_to_remove)
 
             unsafe_replacements = []
             for memory in memories_to_check:
@@ -676,8 +678,9 @@ class MemoryConsolidator:
                         **result.metadata
                     }
 
-                    if result.reasoning:
-                        final_metadata['consolidation_reasoning'] = result.reasoning
+                    # do not include reasoning in memory
+                    # if result.reasoning:
+                    #     final_metadata['consolidation_reasoning'] = result.reasoning
 
                     new_id = await db.insert_text(result.new_memory_content, final_metadata)
                     return [new_id]
@@ -700,8 +703,9 @@ class MemoryConsolidator:
                 **result.metadata     # LLM metadata second (wins conflicts)
             }
 
-            if result.reasoning:
-                final_metadata['consolidation_reasoning'] = result.reasoning
+            # do not include reasoning in memory
+            # if result.reasoning:
+            #     final_metadata['consolidation_reasoning'] = result.reasoning
 
             new_id = await db.insert_text(result.new_memory_content, final_metadata)
             return [new_id]
@@ -710,7 +714,7 @@ class MemoryConsolidator:
 
     async def _handle_update(
         self,
-        db,
+        db: Memory,
         result: ConsolidationResult,
         area: str,
         original_metadata: Dict[str, Any],  # Add original metadata parameter
@@ -728,7 +732,7 @@ class MemoryConsolidator:
 
             if memory_id and new_content:
                 # Validate that the memory exists before attempting to delete it
-                existing_docs = await db.aget_by_ids([memory_id])
+                existing_docs = await db.db.aget_by_ids([memory_id])
                 if not existing_docs:
                     PrintStyle().warning(f"Memory ID {memory_id} not found during update, skipping")
                     continue
@@ -762,8 +766,9 @@ class MemoryConsolidator:
                 **result.metadata     # LLM metadata second (wins conflicts)
             }
 
-            if result.reasoning:
-                final_metadata['consolidation_reasoning'] = result.reasoning
+            # do not include reasoning in memory
+            # if result.reasoning:
+            #     final_metadata['consolidation_reasoning'] = result.reasoning
 
             new_memory_id = await db.insert_text(result.new_memory_content, final_metadata)
             updated_ids.append(new_memory_id)

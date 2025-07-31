@@ -12,14 +12,25 @@ fi
 BRANCH="$1"
 ORIGIN="$2"
 
-if [ -z "$ORIGIN" ]; then
-    ORIGIN="https://github.com/frdel/agent-zero"
-fi
+if [ "$BRANCH" = "local" ]; then
+    # For local branch, use the files
+    echo "Using local dev files in /git/agent-zero"
+    # List all files recursively in the target directory
+    # echo "All files in /git/agent-zero (recursive):"
+    # find "/git/agent-zero" -type f | sort
+else
+    # For other branches, clone from GitHub
+    if [ -z "$ORIGIN" ]; then
+      ORIGIN="https://github.com/frdel/agent-zero"
+    fi
 
-git clone -b "$BRANCH" "$ORIGIN" "/git/agent-zero" || {
-    echo "CRITICAL ERROR: Failed to clone repository. Branch: $BRANCH"
-    exit 1
-}
+    echo "Cloning repository $ORIGIN from branch $BRANCH..."
+
+    git clone -b "$BRANCH" "$ORIGIN" "/git/agent-zero" || {
+        echo "CRITICAL ERROR: Failed to clone repository $ORIGIN - Branch: $BRANCH"
+        exit 1
+    }
+fi
 
 . "/ins/setup_venv.sh" "$@"
 
