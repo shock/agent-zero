@@ -3,7 +3,7 @@
 ## get branch name from first argument
 BRANCH=$1
 if [ -z "$BRANCH" ]; then
-    BRANCH="development"
+    BRANCH="local"
 fi
 
 ORIGIN="$(git remote get-url origin)"
