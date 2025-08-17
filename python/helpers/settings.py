@@ -11,6 +11,7 @@ from python.helpers import runtime, whisper, defer, git
 from . import files, dotenv
 from python.helpers.print_style import PrintStyle
 from python.helpers.providers import get_providers
+from python.helpers.secrets import SecretsManager
 
 
 class Settings(TypedDict):
@@ -84,6 +85,8 @@ class Settings(TypedDict):
     rfc_port_http: int
     rfc_port_ssh: int
 
+    shell_interface: Literal['local','ssh']
+
     stt_model_size: str
     stt_language: str
     stt_silence_threshold: float
@@ -99,8 +102,8 @@ class Settings(TypedDict):
     mcp_server_token: str
 
     a2a_server_enabled: bool
-    
 
+    secrets: str
 
 class PartialSettings(Settings, total=False):
     pass
@@ -132,6 +135,7 @@ class SettingsField(TypedDict, total=False):
     step: float
     hidden: bool
     options: list[FieldOption]
+    style: str
 
 
 class SettingsSection(TypedDict, total=False):
@@ -793,6 +797,17 @@ def convert_out(settings: Settings) -> SettingsOutput:
 
     dev_fields: list[SettingsField] = []
 
+    dev_fields.append(
+        {
+            "id": "shell_interface",
+            "title": "Shell Interface",
+            "description": "Terminal interface used for Code Execution Tool. Local Python TTY works locally in both dockerized and development environments. SSH always connects to dockerized environment (automatically at localhost or RFC host address).",
+            "type": "select",
+            "value": settings["shell_interface"],
+            "options": [{"value": "local", "label": "Local Python TTY"}, {"value": "ssh", "label": "SSH"}],
+        }
+    )
+
     if runtime.is_development():
         # dev_fields.append(
         #     {
@@ -1044,6 +1059,32 @@ def convert_out(settings: Settings) -> SettingsOutput:
         "tab": "mcp",
     }
 
+   # Secrets section
+    secrets_fields: list[SettingsField] = []
+
+    secrets_manager = SecretsManager.get_instance()
+    try:
+        secrets = secrets_manager.get_masked_secrets()
+    except Exception:
+        secrets = ""
+
+    secrets_fields.append({
+        "id": "secrets",
+        "title": "Secrets Store",
+        "description": "Store secrets and credentials in .env format e.g. EMAIL_PASSWORD=\"s3cret-p4$$w0rd\", one item per line. You can use comments starting with # to add descriptions for the agent. See <a href=\"javascript:openModal('settings/secrets/example.html')\">example</a>.",
+        "type": "textarea",
+        "value": secrets,
+        "style": "height: 20em",
+    })
+
+    secrets_section: SettingsSection = {
+        "id": "secrets",
+        "title": "Secrets Management",
+        "description": "Manage secrets and credentials that agents can use without exposing values to LLMs, chat history or logs. Placeholders are automatically replaced with values just before tool calls. If bare passwords occur in tool results, they are masked back to placeholders.",
+        "fields": secrets_fields,
+        "tab": "external",
+    }
+
     mcp_server_fields: list[SettingsField] = []
 
     mcp_server_fields.append(
@@ -1164,6 +1205,7 @@ def convert_out(settings: Settings) -> SettingsOutput:
             memory_section,
             speech_section,
             api_keys_section,
+            secrets_section,
             auth_section,
             mcp_client_section,
             mcp_server_section,
@@ -1207,7 +1249,6 @@ def convert_in(settings: dict) -> Settings:
                     else:
                         current[field["id"]] = field["value"]
     return current
-
 
 def get_settings() -> Settings:
     global _settings
@@ -1298,6 +1339,7 @@ def _remove_sensitive_settings(settings: Settings):
     settings["rfc_password"] = ""
     settings["root_password"] = ""
     settings["mcp_server_token"] = ""
+    settings["secrets"] = ""
 
 
 def _write_sensitive_settings(settings: Settings):
@@ -1315,12 +1357,19 @@ def _write_sensitive_settings(settings: Settings):
     if settings["root_password"]:
         set_root_password(settings["root_password"])
 
+    # Handle secrets separately - merge with existing preserving comments/order and support deletions
+    secrets_manager = SecretsManager.get_instance()
+    submitted_content = settings["secrets"]
+    secrets_manager.save_secrets_with_merge(submitted_content)
+    secrets_manager.clear_cache()  # Clear cache to reload secrets
+
+
 
 def get_default_settings() -> Settings:
     return Settings(
         version=_get_version(),
         chat_model_provider="openrouter",
-        chat_model_name="openai/gpt-5-chat",
+        chat_model_name="openai/gpt-4.1",
         chat_model_api_base="",
         chat_model_kwargs={"temperature": "0"},
         chat_model_ctx_length=100000,
@@ -1330,7 +1379,7 @@ def get_default_settings() -> Settings:
         chat_model_rl_input=0,
         chat_model_rl_output=0,
         util_model_provider="openrouter",
-        util_model_name="google/gemini-2.5-flash-lite",
+        util_model_name="openai/gpt-4.1-mini",
         util_model_api_base="",
         util_model_ctx_length=100000,
         util_model_ctx_input=0.7,
@@ -1345,7 +1394,7 @@ def get_default_settings() -> Settings:
         embed_model_rl_requests=0,
         embed_model_rl_input=0,
         browser_model_provider="openrouter",
-        browser_model_name="openai/gpt-5-chat",
+        browser_model_name="openai/gpt-4.1",
         browser_model_api_base="",
         browser_model_vision=True,
         browser_model_rl_requests=0,
@@ -1378,6 +1427,7 @@ def get_default_settings() -> Settings:
         rfc_password="",
         rfc_port_http=55080,
         rfc_port_ssh=55022,
+        shell_interface="local" if runtime.is_dockerized() else "ssh",
         stt_model_size="base",
         stt_language="en",
         stt_silence_threshold=0.3,
@@ -1390,6 +1440,7 @@ def get_default_settings() -> Settings:
         mcp_server_enabled=False,
         mcp_server_token=create_auth_token(),
         a2a_server_enabled=False,
+        secrets="",
     )
 
 
@@ -1539,7 +1590,7 @@ def set_root_password(password: str):
 def get_runtime_config(set: Settings):
     if runtime.is_dockerized():
         return {
-            "code_exec_ssh_enabled": False,
+            "code_exec_ssh_enabled": set["shell_interface"] == "ssh",
             "code_exec_ssh_addr": "localhost",
             "code_exec_ssh_port": 22,
             "code_exec_ssh_user": "root",
@@ -1553,7 +1604,7 @@ def get_runtime_config(set: Settings):
         if host.endswith("/"):
             host = host[:-1]
         return {
-            "code_exec_ssh_enabled": True,
+            "code_exec_ssh_enabled": set["shell_interface"] == "ssh",
             "code_exec_ssh_addr": host,
             "code_exec_ssh_port": set["rfc_port_ssh"],
             "code_exec_ssh_user": "root",
