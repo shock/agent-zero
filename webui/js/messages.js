@@ -989,8 +989,6 @@ function adjustMarkdownRender(element) {
     wrapper.appendChild(el);
   });
 }
-<<<<<<< HEAD
-=======
 
 class Scroller {
   constructor(element) {
@@ -1010,4 +1008,3 @@ class Scroller {
     if (this.wasAtBottom) this.element.scrollTop = this.element.scrollHeight;
   }
 }
->>>>>>> development
