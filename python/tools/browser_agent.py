@@ -39,7 +39,7 @@ class State:
 
         # for some reason we need to provide exact path to headless shell, otherwise it looks for headed browser
         pw_binary = ensure_playwright_binary()
-
+                
         self.browser_session = browser_use.BrowserSession(
             browser_profile=browser_use.BrowserProfile(
                 headless=True,
@@ -64,7 +64,8 @@ class State:
                     / "profiles"
                     / f"agent_{self.agent.context.id}"
                 ),
-            )
+                extra_http_headers=self.agent.config.browser_http_headers or {},
+                )
         )
 
         await self.browser_session.start() if self.browser_session else None
@@ -191,6 +192,7 @@ class BrowserAgent(Tool):
         self.guid = str(uuid.uuid4())
         reset = str(reset).lower().strip() == "true"
         await self.prepare_state(reset=reset)
+        message = SecretsManager.get_instance().mask_values(message, placeholder="<secret>{key}</secret>") # mask any potential passwords passed from A0 to browser-use to browser-use format
         task = self.state.start_task(message) if self.state else None
 
         # wait for browser agent to finish and update progress with timeout
