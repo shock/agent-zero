@@ -4,6 +4,25 @@ import { marked } from "../vendor/marked/marked.esm.js";
 import { store as _messageResizeStore } from "/components/messages/resize/message-resize-store.js"; // keep here, required in html
 import { store as attachmentsStore } from "/components/chat/attachments/attachmentsStore.js";
 import { addActionButtonsToElement } from "/components/messages/action-buttons/simple-action-buttons.js";
+import mermaid from "../vendor/mermaid/mermaid@11.8.0.esm.min.js";
+
+mermaid.initialize({ startOnLoad: true, theme: "dark" });
+marked.use({
+  renderer: function () {
+    // Custom renderer for mermaid.js
+    const renderer = new marked.Renderer();
+    const default_code_renderer = renderer.code;
+    renderer.code = function (code) {
+      // Detect Mermaid diagrams by language or content
+      if (code.lang === 'mermaid' || code.text.match(/^sequenceDiagram|^graph/)) {
+        return `<pre class="mermaid">${code.text}</pre>`;
+      } else {
+        return default_code_renderer.call(this, code);
+      }
+    };
+    return renderer;
+  }()
+});
 
 const chatHistory = document.getElementById("chat-history");
 
@@ -68,6 +87,7 @@ export function setMessage(id, type, heading, content, temp, kvps = null) {
     }
     messageGroup.appendChild(messageContainer);
     chatHistory.appendChild(messageGroup);
+    mermaid.run();
   }
 
   // Simplified implementation - no setup needed
@@ -450,7 +470,7 @@ export function drawMessageUser(
       messageDiv.appendChild(attachmentsContainer);
     }
     // Important: Clear existing attachments to re-render, preventing duplicates on update
-    attachmentsContainer.innerHTML = ""; 
+    attachmentsContainer.innerHTML = "";
 
     kvps.attachments.forEach((attachment) => {
       const attachmentDiv = document.createElement("div");
