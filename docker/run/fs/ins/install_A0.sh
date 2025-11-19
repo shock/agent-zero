@@ -10,6 +10,7 @@ if [ -z "$1" ]; then
     exit 1
 fi
 BRANCH="$1"
+ORIGIN="$2"
 
 if [ "$BRANCH" = "local" ]; then
     # For local branch, use the files
@@ -19,9 +20,14 @@ if [ "$BRANCH" = "local" ]; then
     # find "/git/agent-zero" -type f | sort
 else
     # For other branches, clone from GitHub
-    echo "Cloning repository from branch $BRANCH..."
-    git clone -b "$BRANCH" "https://github.com/agent0ai/agent-zero" "/git/agent-zero" || {
-        echo "CRITICAL ERROR: Failed to clone repository. Branch: $BRANCH"
+    if [ -z "$ORIGIN" ]; then
+      ORIGIN="https://github.com/frdel/agent-zero"
+    fi
+
+    echo "Cloning repository $ORIGIN from branch $BRANCH..."
+
+    git clone -b "$BRANCH" "$ORIGIN" "/git/agent-zero" || {
+        echo "CRITICAL ERROR: Failed to clone repository $ORIGIN - Branch: $BRANCH"
         exit 1
     }
 fi

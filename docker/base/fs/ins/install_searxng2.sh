@@ -25,8 +25,15 @@ echo "====================SEARXNG2 INST===================="
 # update pip's boilerplate
 pip install --no-cache-dir -U pip setuptools wheel pyyaml lxml
 
-# jump to SearXNG's working tree and install SearXNG into virtualenv
+# jump to SearXNG's working tree and install dependencies first
 cd "/usr/local/searxng/searxng-src"
+
+# Install dependencies from requirements.txt first
+if [ -f "requirements.txt" ]; then
+    pip install --no-cache-dir -r requirements.txt
+fi
+
+# Now install SearXNG into virtualenv in editable mode
 pip install --no-cache-dir --use-pep517 --no-build-isolation -e .
 
 # cleanup cache

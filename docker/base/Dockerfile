@@ -1,5 +1,6 @@
 # Use the latest slim version of Kali Linux
-FROM kalilinux/kali-rolling
+# FROM kalilinux/kali-rolling
+FROM cyberdefense/kali-last-release-headless:2025.2
 
 
 # Set locale to en_US.UTF-8 and timezone to UTC
